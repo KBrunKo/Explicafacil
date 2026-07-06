@@ -1,32 +1,232 @@
-const botao = document.getElementById('btn-explicar');
-const resultado = document.getElementById('resultado');
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explica Fácil - Inteligência Artificial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg: #FBFAF8;
+      --surface: #FFFFFF;
+      --ink: #17150F;
+      --muted: #6E6B62;
+      --line: #E7E3DA;
+      --purple: #6C45C4;
+      --purple-soft: #F2EEFB;
+      --radius: 12px;
+    }
 
-botao.addEventListener('click', async () => {
-  const termo = document.getElementById('input-termo').value;
-  
-  // 1. Estado de carregando
-  botao.disabled = true;
-  resultado.innerText = "Pensando e gerando explicação fácil... Aguarde.";
-  
-  try {
-    const response = await fetch('URL_DO_SEU_WORKER', {
-      method: 'POST',
-      body: JSON.stringify({ termo }),
-      headers: { 'Content-Type': 'application/json' }
-    });
+    * { box-sizing: border-box; }
     
-    if (!response.ok) throw new Error();
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Inter", system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--purple);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 36px;
+      margin: 0 0 12px 0;
+      line-height: 1.1;
+    }
+
+    p.lead {
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--purple);
+    }
+
+    button {
+      width: 100%;
+      background: var(--purple);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button:disabled {
+      background: var(--muted);
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    /* Área de Resposta */
+    .box-resposta {
+      margin-top: 24px;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #FAFAFA;
+      min-height: 60px;
+      display: none; /* Escondido por padrão */
+    }
+
+    .box-resposta.loading {
+      color: var(--muted);
+      font-style: italic;
+      border-style: dashed;
+    }
+
+    .box-resposta.erro {
+      background: #FFF5F5;
+      border-color: #FEB2B2;
+      color: #C53030;
+    }
+
+    .box-resposta.sucesso {
+      background: var(--purple-soft);
+      border-color: #D6BCFA;
+      color: var(--ink);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="eyebrow">Incremento 3 • Workers AI</div>
+  <h1>Explica Fácil</h1>
+  <p class="lead">Digite qualquer termo ou conceito complexo e a Inteligência Artificial da Cloudflare vai te explicar em português simples.</p>
+
+  <div class="card">
+    <div class="form-group">
+      <label for="input-termo">O que você quer entender?</label>
+      <input type="text" id="input-termo" placeholder="Ex: Computação em Nuvem, Paradoxo, Criptografia...">
+    </div>
     
-    const data = await response.json();
+    <button id="btn-explicar">Pedir explicação fácil</button>
+
+    <div id="container-resposta" class="box-resposta"></div>
+  </div>
+</div>
+
+<script>
+  // SUBSTITUA PELA URL REAL DO SEU WORKER DEPOIS DE FAZER O DEPLOY
+  const URL_DO_WORKER = "https://seu-worker.seu-usuario.workers.dev";
+
+  const botao = document.getElementById('btn-explicar');
+  const inputTermo = document.getElementById('input-termo');
+  const boxResposta = document.getElementById('container-resposta');
+
+  botao.addEventListener('click', async () => {
+    const termo = inputTermo.value.trim();
+
+    if (!termo) {
+      alert("Por favor, digite um termo primeiro!");
+      return;
+    }
+
+    // 1. Configura estado de Carregamento (Loading)
+    botao.disabled = true;
+    botao.innerText = "Consultando a IA...";
     
-    // 2. Exibe o resultado
-    resultado.innerText = data.resposta;
-    
-  } catch (error) {
-    // 3. Tratamento de erro amigável
-    resultado.innerText = "Ops! Ocorreu um erro ao falar com a IA. Tente novamente mais tarde.";
-  } finally {
-    // Restaura o botão
-    botao.disabled = false;
-  }
-});
+    boxResposta.style.display = "block";
+    boxResposta.className = "box-resposta loading";
+    boxResposta.innerText = "Pensando em uma explicação bem simples... Aguarde alguns segundos.";
+
+    try {
+      const response = await fetch(URL_DO_WORKER, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ termo: termo })
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro na resposta do servidor");
+      }
+
+      const dados = await response.json();
+
+      // 2. Estado de Sucesso
+      boxResposta.className = "box-resposta sucesso";
+      boxResposta.innerText = dados.resposta;
+
+    } catch (error) {
+      // 3. Estado de Erro
+      boxResposta.className = "box-resposta erro";
+      boxResposta.innerText = "Ops! Não foi possível obter uma resposta da IA agora. Verifique sua conexão ou o limite da conta e tente novamente.";
+      console.error(error);
+    } finally {
+      // Restaura o botão para o estado original
+      botao.disabled = false;
+      botao.innerText = "Pedir explicação fácil";
+    }
+  });
+
+  // Permite disparar o clique ao apertar "Enter" no teclado dentro do input
+  inputTermo.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      botao.click();
+    }
+  });
+</script>
+
+</body>
+</html>
