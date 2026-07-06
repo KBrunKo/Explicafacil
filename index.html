@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explica Fácil AI</title>
+  <style>
+    :root {
+      --bg: #FAFAFC; --surface: #FFFFFF; --ink: #1C1917;
+      --muted: #6B6661; --brand: #7C3AED; --line: #E5E1DC;
+      --brand-soft: #F5F3FF;
+    }
+    body { font-family: system-ui, sans-serif; max-width: 550px; margin: 60px auto; padding: 20px; background: var(--bg); color: var(--ink); }
+    .card { background: var(--surface); border: 1px solid var(--line); padding: 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(124, 58, 237, 0.05); }
+    h2 { margin-top: 0; color: var(--brand); font-size: 26px; }
+    p { color: var(--muted); margin-bottom: 24px; font-size: 15px; }
+    .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+    input[type="text"] { flex: 1; padding: 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 16px; outline: none; }
+    input[type="text"]:focus { border-color: var(--brand); box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1); }
+    button { background: var(--brand); color: white; border: none; padding: 14px 24px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; }
+    button:hover { background: #6D28D9; }
+    button:disabled { background: #C4B5FD; cursor: not-allowed; }
+    
+    .loading { display: none; text-align: center; color: var(--brand); font-weight: 600; margin: 20px 0; font-size: 15px; }
+    
+    .result-box { display: none; margin-top: 24px; padding: 20px; background: var(--brand-soft); border: 1px solid #DDD6FE; border-radius: 12px; line-height: 1.7; font-size: 16px; }
+    .error-box { display: none; margin-top: 24px; padding: 16px; background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; border-radius: 12px; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>💡 Explica Fácil AI</h2>
+    <p>Insira qualquer termo técnico ou conceito complexo abaixo e a Inteligência Artificial da Cloudflare vai te explicar de um jeito simples.</p>
+
+    <div class="input-group">
+      <input type="text" id="termoInput" placeholder="Ex: Banco de Dados Relacional, API, CORS..." autocomplete="off">
+      <button id="btnExplicar" onclick="pedirExplicacao()">Explicar</button>
+    </div>
+
+    <div id="loadingStatus" class="loading">🧠 Pensando e simplificando... Por favor, aguarde alguns instantes.</div>
+    <div id="resultBox" class="result-box"></div>
+    <div id="errorBox" class="error-box"></div>
+  </div>
+
+  <script>
+    // AJUSTE A URL ABAIXO COM O LINK DO SEU WORKER (Sem a barra no final)
+    const API_URL = 'https://tarefaworker.bru-bcms.workers.dev'; 
+
+    async function pedirExplicacao() {
+      const input = document.getElementById('termoInput');
+      const btn = document.getElementById('btnExplicar');
+      const loading = document.getElementById('loadingStatus');
+      const resultBox = document.getElementById('resultBox');
+      const errorBox = document.getElementById('errorBox');
+
+      const termo = input.value.trim();
+      if (!termo) return;
+
+      // Configura o estado de "Carregando" na interface
+      btn.disabled = true;
+      input.disabled = true;
+      loading.style.display = 'block';
+      resultBox.style.display = 'none';
+      errorBox.style.display = 'none';
+
+      try {
+        const res = await fetch(`${API_URL}/explica`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ termo })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          // Exibe o resultado processado pela IA
+          resultBox.innerHTML = `<strong>Resposta da IA:</strong><br><br>${data.explicacao.replace(/\n/g, '<br>')}`;
+          resultBox.style.display = 'block';
+        } else {
+          // Exibe erro controlado vindo do backend
+          errorBox.innerText = `⚠️ ${data.error || 'Não foi possível gerar a explicação.'}`;
+          errorBox.style.display = 'block';
+        }
+      } catch (err) {
+        // Exibe erro de rede/conexão
+        errorBox.innerText = "❌ Ocorreu um erro de comunicação com o servidor. Verifique o seu backend.";
+        errorBox.style.display = 'block';
+      } finally {
+        // Restaura a interface ao estado normal
+        btn.disabled = false;
+        input.disabled = false;
+        loading.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>
